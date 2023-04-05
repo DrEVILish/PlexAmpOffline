@@ -5,6 +5,14 @@ const { isBuffer } = require("util")
 var plexAmpOffline = "/Users/DrEVILish/Library/Application Support/Plexamp/Offline/"
 var plexAmpOfflineFLAC = "/Users/DrEVILish/Music/PlexAmp"
 
+function songFileNameFromGUID(json,guid){
+  const item = json.items.find((i) => i.guid == guid)
+  if (!item) return false
+
+  return item.title.replace(/\//g, '') + " - " + item.grandparentTitle.replace(/\//g, '') + " - " + item.parentTitle.replace(/\//g, '') + "." + item.media[0].parts[0].key.split('.').pop()
+}
+
+
 clearPlaylists = () => {
   return new Promise((resolve, reject) => {
     console.log("start")
@@ -34,13 +42,21 @@ makePlaylists = () => {
     fs.readdir(plexAmpOffline, (err, playlists)=>{
       playlists.forEach((playlist,i,playlists)=>{
         if(playlist.startsWith(".")) return
+
+        // NEW PLAYLIST FOLDER
         fs.mkdir(path.join(plexAmpOfflineFLAC,playlist),(err)=>{ if (err) throw err })
+
+        const json = JSON.parse(fs.readFileSync(path.join(plexAmpOffline,playlist,"index.json")))
+
         fs.readdir(path.join(plexAmpOffline,playlist),(err,songs)=>{
           songs.forEach((song,j,songs)=>{
             if(song.includes(".")) return
-            var songDotFlac = song + ".flac"
+            if(song.includes("-")) return
+            var songTitleDotExt = songFileNameFromGUID(json,song)
+            if(!songTitleDotExt) return
             console.log(song)
-            fs.link(path.join(plexAmpOffline,playlist,song),path.join(plexAmpOfflineFLAC,playlist,songDotFlac),(err)=>{
+            console.log(songTitleDotExt)
+            fs.link(path.join(plexAmpOffline,playlist,song),path.join(plexAmpOfflineFLAC,playlist,songTitleDotExt),(err)=>{
               if(err) throw err
             })
             // Check if it's the last iteration of the loop
